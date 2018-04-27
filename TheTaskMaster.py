@@ -28,7 +28,7 @@ class TaskMasterApp(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        for F in (UserView, LoginView, AdminView, ViewTasksView, CreateTasksView):
+        for F in (UserView, AdvUserView, LoginView, AdminView, ViewTasksView, CreateTasksView):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -48,6 +48,8 @@ class TaskMasterApp(tk.Tk):
             self.frames[page_name].update_user_display()
         elif page_name == 'LoginView':
             self.frames[page_name].load_login_screen()
+        elif page_name == 'AdvUserView':
+            self.frames[page_name].update_adv_user_screen()
         elif page_name == 'AdminView':
             self.frames[page_name].update_admin_view()
         elif page_name == 'ViewTasksViewOpen':
@@ -108,13 +110,66 @@ class TaskMasterApp(tk.Tk):
         print(rows)
         return rows
 
-class AdminView(tk.Frame):
 
+class AdminView(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
 
     def update_admin_view(self):
+        label = tk.Label(self, text="Admin Screen", font=self.controller.title_font)
+        label.place(relx=.1, rely=.05, width=.8 * width)
+        error_label = tk.Label(self, text="", font=('Helvetica', 10))
+        error_label.place(relx=.1, rely=.125, width=.8 * width)
+
+        if user_level == 2:
+            logout_or_goback = 'AdvUserView'
+            logout_text = 'Go Back'
+        else:
+            logout_or_goback = 'LoginView'
+            logout_text = 'Log Out'
+
+        user_name_label = tk.Label(self, text="New User Name:", font=self.controller.title_font)
+        password_label = tk.Label(self, text="New Password:", font=self.controller.title_font)
+        level_label = tk.Label(self, text="Level:", font=self.controller.title_font)
+        user_name_text = tk.Entry(self, width=20, font=self.controller.title_font)
+        password_text = tk.Entry(self, show='*', width=20, font=self.controller.title_font)
+        level_text = tk.Entry(self, width=20, font=self.controller.title_font)
+        add_user_button = tk.Button(self, text="Add User", bg='DeepSkyBlue2', font=self.controller.title_font,
+                                 command=lambda: self.add_credentials(user_name_text.get(), password_text.get(),
+                                                                      level_text.get(), error_label))
+        logout_button = tk.Button(self, text=logout_text, bg='DeepSkyBlue2', font=self.controller.title_font,
+                                    command=lambda: self.controller.show_frame(logout_or_goback))
+
+        user_name_label.place(relx=.2, rely=.2, width=width * .6)
+        user_name_text.place(relx=.2, rely=.3, width=width * .6)
+        password_label.place(relx=.2, rely=.4, width=width * .6)
+        password_text.place(relx=.2, rely=.5, width=width * .6)
+        level_label.place(relx=.2, rely=.6, width=width * .3)
+        level_text.place(relx=.5, rely=.6, width=width * .3)
+        add_user_button.place(relx=.3, rely=.7, width=width * .4)
+        logout_button.place(relx=.3, rely=.8, width=width * .4)
+
+    def add_credentials(self, name, password, level, error_label):
+        if int(level) not in {1, 2}:
+            error_label.config(text="Error: level must be 1 or 2")
+            return
+        conn = sqlite3.connect('TaskMaster.db')
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO logins(name, password, access) VALUES(?,?,?)",
+            (name, password, level))
+        conn.commit()
+        self.controller.show_frame('AdminView')
+
+
+class AdvUserView(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+
+    def update_adv_user_screen(self):
         label = tk.Label(self, text="Welcome " + user_name, font=self.controller.title_font)
         label.place(relx=.1, rely=.05, width=.8 * width)
 
@@ -124,8 +179,8 @@ class AdminView(tk.Frame):
                                       command=lambda: self.controller.show_frame('CreateTasksView'))
         my_tasks_button = tk.Button(self, text="My Tasks", font=self.controller.title_font, bg='light blue',
                                     command=lambda: self.controller.show_frame('UserView'))
-        status_update_button = tk.Button(self, text="View Completed Tasks", font=self.controller.title_font, bg='light blue',
-                                         command=lambda: self.controller.show_frame('ViewTasksViewComplete'))
+        status_update_button = tk.Button(self, text="Add User", font=self.controller.title_font, bg='light blue',
+                                         command=lambda: self.controller.show_frame('AdminView'))
 
         view_tasks_button.place(relx=.2, rely=.2, width=.6 * width)
         create_tasks_button.place(relx=.2, rely=.35, width=.6 * width)
@@ -173,7 +228,7 @@ class CreateTasksView(tk.Frame):
 
         add_task_button.place(relx=.2, rely=.70, width=.6 * width)
         return_to_main_button = tk.Button(self, text="Return to Main", font=self.controller.title_font, bg='light blue',
-                                        command=lambda: self.controller.show_frame('AdminView'))
+                                        command=lambda: self.controller.show_frame('AdvUserView'))
         return_to_main_button.place(relx=.4, rely=.85, width=.55 * width)
 
 
@@ -221,7 +276,7 @@ class ViewTasksView(tk.Frame):
             completed_date_label[i].place(relx=.61, rely=.10, width=task_frame[i].winfo_width() / 3)
 
         manage_tasks_button = tk.Button(self, text="Return to Main", font=self.controller.title_font, bg='light blue',
-                                        command=lambda: self.controller.show_frame('AdminView'))
+                                        command=lambda: self.controller.show_frame('AdvUserView'))
         manage_tasks_button.place(relx=.4, rely=.85, width=.55 * width)
 
 
@@ -281,7 +336,7 @@ class UserView(tk.Frame):
 
         if user_level == 2:
             return_to_main_button = tk.Button(self, text="Return to Main", font=self.controller.title_font, bg='light blue',
-                                              command=lambda: self.controller.show_frame('AdminView'))
+                                              command=lambda: self.controller.show_frame('AdvUserView'))
             return_to_main_button.place(relx=.4, rely=.85, width=.55 * width)
 
         def complete_clicked(x):
@@ -335,13 +390,16 @@ class LoginView(tk.Frame):
         rows = c.fetchall()
         print(rows)
         if rows:
-            if rows[0][1] == password:
+            if rows[0][0] == 'admin':
+                if rows[0][1] == 'admin':
+                    self.controller.show_frame('AdminView')
+            elif rows[0][1] == password:
                 if rows[0][2] == 1:
                     user_level = 1
                     self.controller.show_frame('UserView')
                 elif rows[0][2] == 2:
                     user_level = 2
-                    self.controller.show_frame('AdminView')
+                    self.controller.show_frame('AdvUserView')
             else:
                 print('fail')
 
